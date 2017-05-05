@@ -1,5 +1,7 @@
 DROP TABLE IF EXISTS ContratDeVentes ;
 DROP TABLE IF EXISTS CoutProds ;
+DROP TABLE IF EXISTS Reservations;
+DROP TABLE IF EXISTS Vendus;
 DROP TABLE IF EXISTS Tickets ;
 DROP TABLE IF EXISTS Representations ;
 DROP TABLE IF EXISTS Subventions ;
@@ -8,6 +10,7 @@ DROP TABLE IF EXISTS SpectaclesAchetes ;
 DROP TABLE IF EXISTS Spectacles ;
 DROP TABLE IF EXISTS Salles ;
 DROP TABLE IF EXISTS Organismes ;
+DROP TABLE IF EXISTS Tarifs;
 
 DROP TYPE IF EXISTS EnumActions ;
 
@@ -99,4 +102,41 @@ CREATE TABLE Tarifs (
   prix INTEGER CHECK (prix > 0)
 );
 
+/***************	FONCTION 	****************/
+/**************	END FONCTION	****************/
 
+/**********	FONCTION FOR TRIGGER	************/
+CREATE OR REPLACE FUNCTION nbPlacesInfCapacite() RETURNS TRIGGER AS $$
+    DECLARE
+        capacite int := 0;
+    BEGIN
+        SELECT Salles.capacite INTO capacite FROM Salles WHERE nom = 'Chrysanteme';
+        IF capacite < new.nbPlaces THEN
+            RAISE NOTICE 'le nombre de place souhaite est trop important';
+            return null;
+        ELSE
+            return new;
+        END IF;
+    END;
+$$ LANGUAGE plpgsql;
+/******	    END FONCTION FOR TRIGGER	********/
+
+/***************	TRIGGER		****************/
+CREATE TRIGGER RepresentationsNbPlaces BEFORE INSERT OR UPDATE OF nbPlaces
+ON Representations FOR EACH ROW EXECUTE PROCEDURE nbPlacesInfCapacite();
+/************** END TRIGGER		****************/
+
+/***************	INSERT 	****************/
+INSERT INTO Salles (capacite, nom, ville, departement, pays) VALUES
+    (100, 'Chrysanteme', 'Paris', 'Paris', 'France');
+
+INSERT INTO Spectacles (nom) VALUES
+    ('Notre-Dame-de-Paris');
+
+INSERT INTO SpectaclesCres (idSpectacle) VALUES
+    ((SELECT idSpectacle from Spectacles WHERE nom='Notre-Dame-de-Paris'));
+
+INSERT INTO Representations( date, lieu, nbPlaces, idSpectacle) VALUES
+    (TIMESTAMP '2017-05-05 22:20:51', 'Paris', 100,
+        (SELECT idSpectacle from Spectacles WHERE nom='Notre-Dame-de-Paris'));
+/**************	END INSERT 	****************/

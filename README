@@ -3,13 +3,12 @@ Tickets
 -> dateLimite < Representation.date => trigger insert or update
 
 Representation
-->nbPlacesMax <= Salle.capacite => trigger insert or update
 -> dateRepresentation > SpectaclesAchetés.dateAchat => trigger insert or update
 
 Fonctions :
--> calcul de depenses total : achat de spectacles + cout de mise de ses spectacles 
+-> calcul de depenses total : achat de spectacles + cout de mise de ses spectacles
 -> calcul des recette total : subventions + billeterie (hors places reservées)
--> calcul par spectacles : depenses et recette en fonction d'un nom de spectacles ou id ? 
+-> calcul par spectacles : depenses et recette en fonction d'un nom de spectacles ou id ?
 -> calcul par mois : depenses et recette
 -> calcul par année : depenses et recette
 -> par representation : nombre total de billet vendu, reservées, nombre par tarif
