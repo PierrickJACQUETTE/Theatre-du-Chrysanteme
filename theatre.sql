@@ -10,11 +10,8 @@ DROP TABLE IF EXISTS Salles ;
 DROP TABLE IF EXISTS Organismes ;
 
 DROP TYPE IF EXISTS EnumActions ;
-DROP TYPE IF EXISTS EnumStatus;
 
 CREATE TYPE EnumActions AS ENUM ('creation', 'accueil');
-CREATE TYPE EnumStatus AS ENUM ('reserve', 'achete');
-
 
 CREATE TABLE Organismes (
   idOrganisme SERIAL PRIMARY KEY,
@@ -35,15 +32,13 @@ CREATE TABLE Salles (
 
 CREATE TABLE Spectacles (
   idSpectacle SERIAL PRIMARY KEY,
-  nom VARCHAR(50) UNIQUE NOT NULL,
-  tarifNormal INTEGER CHECK (tarifNormal > 0),
-  tarifReduit INTEGER CHECK (tarifReduit > 0)
+  nom VARCHAR(50) UNIQUE NOT NULL
 );
 
 CREATE TABLE SpectaclesAchetes (
   idSpectacle SERIAL PRIMARY KEY REFERENCES Spectacles,
   prix INTEGER CHECK (prix > 0),
-  date DATE DEFAULT CURRENT_DATE,
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   idSalle SERIAL REFERENCES Salles
 );
 
@@ -51,43 +46,57 @@ CREATE TABLE SpectaclesCres (
   idSpectacle SERIAL PRIMARY KEY REFERENCES Spectacles
 );
 
-CREATE TABLE Subventions (
-  id SERIAL PRIMARY KEY,
-  action EnumActions NOT NULL,
-  date DATE DEFAULT CURRENT_DATE,
-  prix INTEGER CHECK (prix > 0),
-  idOrganisme SERIAL REFERENCES Organismes,
-  idSpectacle SERIAL REFERENCES Spectacles
-);
-
-CREATE TABLE Representations (
-  idRepresentation SERIAL PRIMARY KEY,
-  date DATE NOT NULL,
-  lieu VARCHAR(50) NOT NULL,
-  reduction INTEGER CHECK (reduction >= 0),
-  condition VARCHAR(50),
-  nbPlaces Integer NOT NULL CHECK (nbPlaces > 0),
-  idSpectacle SERIAL REFERENCES Spectacles
-);
-
-CREATE TABLE Tickets (
-  idTicket SERIAL PRIMARY KEY,
-  prix INTEGER CHECK (prix > 0),
-  status EnumStatus,
-  idRepresentation SERIAL REFERENCES Representations
-);
-
 CREATE TABLE CoutProds (
   idCoutProd SERIAL PRIMARY KEY,
   prix INTEGER CHECK (prix > 0),
-  date DATE DEFAULT CURRENT_DATE,
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   idSpectacle SERIAL REFERENCES SpectaclesCres
 );
 
 CREATE TABLE ContratDeVentes (
   idContratDeVente SERIAL PRIMARY KEY,
   prix INTEGER CHECK (prix > 0),
-  date DATE DEFAULT CURRENT_DATE,
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   idSpectacle SERIAL REFERENCES SpectaclesCres,
   idSalle SERIAL REFERENCES Salles
 );
+
+CREATE TABLE Subventions (
+  action EnumActions NOT NULL,
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  prix INTEGER CHECK (prix > 0),
+  idOrganisme SERIAL REFERENCES Organismes,
+  idSpectacle SERIAL REFERENCES Spectacles,
+  PRIMARY KEY (idOrganisme, idSpectacle)
+);
+
+CREATE TABLE Representations (
+  idRepresentation SERIAL PRIMARY KEY,
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  lieu VARCHAR(50) NOT NULL,
+  nbPlaces Integer NOT NULL CHECK (nbPlaces > 0),
+  idSpectacle SERIAL REFERENCES Spectacles
+);
+
+CREATE TABLE Tickets (
+  idTicket SERIAL PRIMARY KEY,
+  nom VARCHAR(50) NOT NULL,
+  idRepresentation SERIAL REFERENCES Representations
+);
+
+CREATE TABLE Reservations (
+  idTicket SERIAL PRIMARY KEY REFERENCES Tickets,
+  dateLimite TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Vendus (
+  idTicket SERIAL PRIMARY KEY REFERENCES Tickets
+);
+
+CREATE TABLE Tarifs (
+  idTarifs SERIAL PRIMARY KEY,
+  nom VARCHAR(50) NOT NULL,
+  prix INTEGER CHECK (prix > 0)
+);
+
+
