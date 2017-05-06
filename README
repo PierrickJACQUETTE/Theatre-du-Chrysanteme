@@ -1,7 +1,3 @@
-Tickets
--> voir quand déclencher le trigger pour annulé une reservation si la date est depassé
--> dateLimite < Representation.date => trigger insert or update
-
 Representation
 -> dateRepresentation > SpectaclesAchetés.dateAchat => trigger insert or update
 

@@ -97,7 +97,7 @@ CREATE TABLE Tickets (
 
 CREATE TABLE Reservations (
   idTicket SERIAL PRIMARY KEY REFERENCES Tickets,
-  dateLimite TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  dateLimite TIMESTAMP DEFAULT CURRENT_TIMESTAMP + interval '72 hours'
 );
 
 CREATE TABLE Vendus (
@@ -105,6 +105,28 @@ CREATE TABLE Vendus (
 );
 
 /***************	FONCTION 	****************/
+
+CREATE OR REPLACE FUNCTION acheteUneReservation(nom VARCHAR(50)) RETURNS void AS $$
+    DECLARE
+        nb int :=0;
+        id int :=0;
+    BEGIN
+        SELECT count(*) INTO nb FROM Reservations WHERE nom=nom;
+        IF nb <= 0 THEN
+            RAISE NOTICE 'Le ticket est inconnu !';
+            return;
+        END IF;
+        IF (SELECT dateLimite FROM Reservations WHERE nom=nom) < CURRENT_TIMESTAMP THEN
+            RAISE NOTICE 'La date limite est depasse !';
+            return;
+        ELSE
+            SELECT idTicket INTO id FROM Reservations WHERE nom=nom;
+            DELETE FROM Reservations WHERE nom=nom;
+            INSERT INTO Vendus (idTicket) VALUES (id);
+        END IF;
+    END;
+$$ LANGUAGE plpgsql;
+
 /**************	END FONCTION	****************/
 
 /**********	FONCTION FOR TRIGGER	************/
@@ -119,7 +141,7 @@ CREATE OR REPLACE FUNCTION ticketsReserves() RETURNS TRIGGER AS $$
         IF nb <= 0 THEN
             RAISE NOTICE 'Le ticket est inconnu !';
             return null;
-        ELSIF nbReserve >= 1 THEN
+        ELSIF nbVendus >= 1 THEN
             RAISE NOTICE 'Le ticket existe deja comme un ticket achete !';
             return null;
         ELSE
@@ -203,17 +225,17 @@ $$ LANGUAGE plpgsql;
 
 /***************	TRIGGER		****************/
 
-CREATE TRIGGER insertTicketsReserves BEFORE INSERT OR UPDATE
+CREATE TRIGGER insertTicketsReserves BEFORE INSERT
 ON Reservations FOR EACH ROW EXECUTE PROCEDURE ticketsReserves();
 
-CREATE TRIGGER insertTicketsAchetes BEFORE INSERT OR UPDATE
+CREATE TRIGGER insertTicketsAchetes BEFORE INSERT
 ON Vendus FOR EACH ROW EXECUTE PROCEDURE ticketsVendus();
 
 CREATE TRIGGER insertSpectaclesCres BEFORE INSERT OR UPDATE
 ON SpectaclesCres FOR EACH ROW EXECUTE PROCEDURE spectaclesCres();
 
 CREATE TRIGGER insertSpectaclesAchetes BEFORE INSERT OR UPDATE
-ON spectaclesAchetes FOR EACH ROW EXECUTE PROCEDURE spectaclesAchetes();
+ON SpectaclesAchetes FOR EACH ROW EXECUTE PROCEDURE spectaclesAchetes();
 
 CREATE TRIGGER representationsNbPlaces BEFORE INSERT OR UPDATE OF nbPlaces
 ON Representations FOR EACH ROW EXECUTE PROCEDURE nbPlacesInfCapacite();
@@ -235,4 +257,15 @@ INSERT INTO Representations( date, lieu, nbPlaces, idSpectacle) VALUES
     (TIMESTAMP '2017-05-05 22:20:51', 'Paris', 100,
         (SELECT idSpectacle from Spectacles WHERE nom='Notre-Dame-de-Paris'));
 
+INSERT INTO Tarifs (nom, prix ,idRepresentation) VALUES
+    ('Normal', 16, (SELECT idRepresentation FROM Representations JOIN Spectacles
+        ON Representations.idSpectacle = Spectacles.idSpectacle WHERE
+        nom='Notre-Dame-de-Paris'));
+
+INSERT INTO Tickets (nom, idRepresentation, idTarifs) VALUES
+    ('Dupond', (SELECT idRepresentation FROM Representations
+        WHERE date='2017-05-05 22:20:51' and lieu='Paris'), (SELECT idTarifs FROM Tarifs WHERE idRepresentation=idRepresentation AND nom='Normal'));
+
+INSERT INTO Reservations (idTicket) VALUES
+    ((SELECT idTicket FROM Tickets WHERE nom='Dupond'));
 /**************	END INSERT 	****************/
