@@ -1,10 +1,11 @@
 Fonctions :
--> calcul des recette total : + vendus -> fonction a completer
--> calcul par spectacles : depenses et recette en fonction d'un nom de spectacles ou id ?
--> calcul par mois : depenses et recette
+-> calcul par mois : depenses et recette : date_trunc('day', date)
 -> calcul par année : depenses et recette
 -> par representation : nombre total de billet vendu, reservées, nombre par tarif
--> permettant de reserves ou acheter plusieurs place en meme temps à differents tarifs???
+-> permettant de reserves ou acheter plusieurs place en meme temps à differents tarifs
 
 
-changement de date .....
+
+
+
+->politique tarifaire
