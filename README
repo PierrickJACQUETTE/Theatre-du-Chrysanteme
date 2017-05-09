@@ -1,11 +1,10 @@
-Representation
--> dateRepresentation > SpectaclesAchetés.dateAchat => trigger insert or update
-
 Fonctions :
--> calcul de depenses total : achat de spectacles + cout de mise de ses spectacles
--> calcul des recette total : subventions + billeterie (hors places reservées)
+-> calcul des recette total : + vendus -> fonction a completer
 -> calcul par spectacles : depenses et recette en fonction d'un nom de spectacles ou id ?
 -> calcul par mois : depenses et recette
 -> calcul par année : depenses et recette
 -> par representation : nombre total de billet vendu, reservées, nombre par tarif
 -> permettant de reserves ou acheter plusieurs place en meme temps à differents tarifs???
+
+
+changement de date .....
