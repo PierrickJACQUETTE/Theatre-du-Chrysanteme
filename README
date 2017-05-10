@@ -1,11 +1,14 @@
 Fonctions :
--> calcul par mois : depenses et recette : date_trunc('day', date)
--> calcul par année : depenses et recette
 -> par representation : nombre total de billet vendu, reservées, nombre par tarif
--> permettant de reserves ou acheter plusieurs place en meme temps à differents tarifs
+
+Politique tarifaire :
+->voir lesquels on choisit
+->trigger
+-> attention a l'insert quand tarif deja indiqué => Que normal ou reduit et appliqué une reduction dans le trigger si possible
 
 
 
-
-
-->politique tarifaire
+->fonction permettant d'inserer plus facilement ? (reserver et achete tickets deja fait pour permettre d'en faire plusieurs)
+->preparer les requetes que l'on veut faire pendant la soutenance
+-> rapport
+-> les deux schemas

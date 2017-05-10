@@ -96,6 +96,7 @@ CREATE TABLE Tarifs (
 CREATE TABLE Tickets (
   idTicket SERIAL PRIMARY KEY,
   nom VARCHAR(50) NOT NULL,
+  idReference SERIAL NOT NULL,
   idRepresentation SERIAL REFERENCES Representations,
   idTarif SERIAL REFERENCES Tarifs
 );
@@ -111,27 +112,130 @@ CREATE TABLE Vendus (
 
 /***************	FONCTION 	****************/
 
-CREATE OR REPLACE FUNCTION acheteUneReservation(nomFamille VARCHAR(50)) RETURNS void AS $$
+CREATE OR REPLACE FUNCTION privateCheckPeriode(periode VARCHAR(15)) RETURNS BOOLEAN AS $$
+    BEGIN
+        IF periode IS NULL OR periode = 'microseconds' OR periode = 'millennium'
+             OR periode = 'minute' OR periode = 'second' OR periode = 'quarter'
+             OR periode = 'hour' OR periode = 'day' OR periode = 'week' OR periode = 'year'
+             OR periode = 'decade' OR periode = 'month' OR periode = 'century'  THEN
+             return true;
+        ELSE
+            return false;
+        END IF;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION achete(nomFamille VARCHAR(50), nombre int,
+representation int) RETURNS void AS $$
+    DECLARE
+        idRes int :=0;
+    BEGIN
+        IF nombre < 1 THEN
+            RAISE EXCEPTION 'Le nombre de tickets doit etre positif';
+        ELSE
+            SELECT idReference INTO idRes FROM Tickets WHERE nom=nomFamille
+            AND idRepresentation=representation;
+        END IF;
+        IF idRes IS NULL THEN
+            WITH rows AS (
+            INSERT INTO Tickets (nom, idRepresentation, idTarif) VALUES
+                (nomFamille, representation , (SELECT idTarif
+                FROM Tarifs WHERE idRepresentation=representation AND nom='Normal'))
+                RETURNING idTicket)
+            INSERT INTO Vendus (idTicket) SELECT idTicket FROM rows;
+            SELECT idReference INTO idRes FROM Tickets WHERE nom=nomFamille
+                AND idRepresentation=representation;
+        ELSE
+            RAISE NOTICE 'Modification de lachat deja existant';
+            WITH rows AS (
+            INSERT INTO Tickets (nom, idRepresentation, idReference, idTarif) VALUES
+                (nomFamille, representation , idRes, (SELECT idTarif
+                FROM Tarifs WHERE idRepresentation=representation AND nom='Normal'))
+                RETURNING idTicket)
+            INSERT INTO Vendus (idTicket) SELECT idTicket FROM rows;
+        END IF;
+        RAISE NOTICE '1 billet ajoute';
+        FOR i in 2..nombre
+        LOOP
+            WITH rows AS (
+            INSERT INTO Tickets (nom, idRepresentation, idReference, idTarif) VALUES
+                (nomFamille, representation , idRes, (SELECT idTarif
+                FROM Tarifs WHERE idRepresentation=representation AND nom='Normal'))
+                RETURNING idTicket)
+            INSERT INTO Vendus (idTicket) SELECT idTicket FROM rows;
+            RAISE NOTICE '% billets ajoutes', i;
+        END LOOP;
+    END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION reserve(nomFamille VARCHAR(50), nombre int,
+representation int) RETURNS void AS $$
+    DECLARE
+        idRes int :=0;
+    BEGIN
+        IF nombre < 1 THEN
+            RAISE EXCEPTION 'Le nombre de tickets doit etre positif';
+        ELSE
+            SELECT idReference INTO idRes FROM Tickets WHERE nom=nomFamille
+            AND idRepresentation=representation;
+        END IF;
+        IF idRes IS NULL THEN
+            WITH rows AS (
+            INSERT INTO Tickets (nom, idRepresentation, idTarif) VALUES
+                (nomFamille, representation , (SELECT idTarif
+                FROM Tarifs WHERE idRepresentation=representation AND nom='Normal'))
+                RETURNING idTicket)
+            INSERT INTO Reservations (idTicket) SELECT idTicket FROM rows;
+            SELECT idReference INTO idRes FROM Tickets WHERE nom=nomFamille
+                AND idRepresentation=representation;
+        ELSE
+            RAISE NOTICE 'Modification de la reservation existante';
+            WITH rows AS (
+            INSERT INTO Tickets (nom, idRepresentation, idReference, idTarif) VALUES
+                (nomFamille, representation , idRes, (SELECT idTarif
+                FROM Tarifs WHERE idRepresentation=representation AND nom='Normal'))
+                RETURNING idTicket)
+            INSERT INTO Reservations (idTicket) SELECT idTicket FROM rows;
+        END IF;
+        RAISE NOTICE '1 billet ajoute';
+        FOR i in 2..nombre
+        LOOP
+            WITH rows AS (
+            INSERT INTO Tickets (nom, idRepresentation, idReference, idTarif) VALUES
+                (nomFamille, representation , idRes, (SELECT idTarif
+                FROM Tarifs WHERE idRepresentation=representation AND nom='Normal'))
+                RETURNING idTicket)
+            INSERT INTO Reservations (idTicket) SELECT idTicket FROM rows;
+            RAISE NOTICE '% billets ajoutes', i;
+        END LOOP;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION acheteUneReservation(nomFamille VARCHAR(50),
+idReservation int) RETURNS void AS $$
     DECLARE
         nb int :=0;
         ligne record;
     BEGIN
         FOR ligne IN
             SELECT dateLimite, Tickets.idTicket FROM Tickets JOIN Reservations
-            ON Tickets.idTicket = Reservations.idTicket WHERE nom=nomFamille
+                ON Tickets.idTicket = Reservations.idTicket WHERE nom=nomFamille
+                AND idReference=idReservation
         LOOP
             IF ligne.dateLimite < (SELECT date FROM DateCourante) THEN
                 DELETE FROM Reservations WHERE idTicket=ligne.idTicket;
                 DELETE FROM Tickets WHERE idTicket=ligne.idTicket;
-                RAISE NOTICE 'La date limite est depasse !';
+                RAISE EXCEPTION 'La date limite est depasse !';
             ELSE
                 DELETE FROM Reservations WHERE idTicket=ligne.idTicket;
                 INSERT INTO Vendus (idTicket) VALUES (ligne.idTicket);
+                RAISE NOTICE '% billet(s) achete(s)', nb+1;
             END IF;
             nb:=nb+1;
         END LOOP;
         IF nb = 0 THEN
-            RAISE NOTICE 'Le ticket est inconnu !';
+            RAISE EXCEPTION 'Le ticket est inconnu !';
             return;
         END IF;
     END;
@@ -148,7 +252,7 @@ CREATE OR REPLACE FUNCTION refreshReservation() RETURNS void AS $$
             IF ligne.dateLimite < (SELECT date FROM DateCourante) THEN
                 DELETE FROM Reservations WHERE idTicket=ligne.idTicket;
                 DELETE FROM Tickets WHERE idTicket=ligne.idTicket;
-                RAISE NOTICE 'La date limite est depasse !';
+                RAISE EXCEPTION 'La date limite est depasse !';
             END IF;
         END LOOP;
     END;
@@ -170,6 +274,31 @@ CREATE OR REPLACE FUNCTION depenses(nomSpec VARCHAR(50)) RETURNS INT AS $$
     END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION depenses(nomSpec VARCHAR(50), periode VARCHAR(15))
+RETURNS TABLE (depenses numeric(10), date TIMESTAMP) AS $$
+    DECLARE
+        idSpec int :=0;
+    BEGIN
+        IF privateCheckPeriode(periode) = FALSE THEN
+            RAISE EXCEPTION 'La periode indique nest pas valide!';
+        END IF;
+        SELECT idSpectacle INTO idSpec FROM Spectacles WHERE nom=nomSpec;
+        return query SELECT coalesce(sum(sub.P),0),
+            date_trunc(periode, sub.d) AS e FROM (
+                SELECT coalesce(sum(prix),0) AS P,
+                    date_trunc(periode, SpectaclesAchetes.date) AS d FROM
+                    SpectaclesAchetes WHERE (idSpectacle = idSpec OR idSpec IS NULL)
+                    GROUP By d
+                union all
+                SELECT coalesce(sum(prix),0) AS P, date_trunc(periode, CoutProds.date) AS d
+                    FROM CoutProds JOIN SpectaclesCres ON
+                    CoutProds.idSpectacle = SpectaclesCres.idSpectacle
+                    WHERE (SpectaclesCres.idSpectacle = idSpec OR idSpec IS NULL)
+                    GROUP By d
+        ) AS sub GROUP BY e ORDER BY e asc;
+    END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION recettes(nomSpec VARCHAR(50)) RETURNS INT AS $$
     DECLARE
         idSpec int :=0;
@@ -181,7 +310,7 @@ CREATE OR REPLACE FUNCTION recettes(nomSpec VARCHAR(50)) RETURNS INT AS $$
         SELECT coalesce(sum(prix),0) INTO subvention FROM Subventions
             WHERE (idSpectacle = idSpec OR idSpec IS NULL);
         SELECT coalesce(sum(prix),0) INTO ticketsVendus FROM Tickets
-            INNER JOIN Tarifs ON tickets.idTarif = Tarifs.idTarif JOIN Vendus ON
+            JOIN Tarifs ON tickets.idTarif = Tarifs.idTarif JOIN Vendus ON
             Vendus.idTicket = Tickets.idTicket JOIN Representations ON
             Tickets.idRepresentation = Representations.idRepresentation WHERE
             (idSpectacle = idSpec OR idSpec IS NULL);
@@ -189,6 +318,37 @@ CREATE OR REPLACE FUNCTION recettes(nomSpec VARCHAR(50)) RETURNS INT AS $$
             SpectaclesCres ON ContratDeVentes.idSpectacle = SpectaclesCres.idSpectacle
             WHERE (SpectaclesCres.idSpectacle = idSpec OR idSpec IS NULL);
         return subvention + ticketsVendus + spectacleVendus;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION recettes(nomSpec VARCHAR(50), periode VARCHAR(15))
+RETURNS TABLE (recettes numeric(10), date TIMESTAMP) AS $$
+    DECLARE
+        idSpec int :=0;
+    BEGIN
+        IF privateCheckPeriode(periode) = FALSE THEN
+            RAISE EXCEPTION 'La periode indique nest pas valide!';
+            END IF;
+        SELECT idSpectacle INTO idSpec FROM Spectacles WHERE nom=nomSpec;
+        return query SELECT coalesce(sum(sub.P),0), date_trunc(periode, sub.d)
+            AS e FROM (
+                SELECT coalesce(sum(prix),0) AS P, date_trunc(periode, Subventions.date) AS d
+                    FROM Subventions WHERE (idSpectacle = idSpec OR idSpec IS NULL)
+                    GROUP BY d
+                union all
+                SELECT coalesce(sum(prix),0) AS P, date_trunc(periode, Representations.date) AS d
+                    FROM Tickets JOIN Tarifs ON tickets.idTarif = Tarifs.idTarif
+                    JOIN Vendus ON Vendus.idTicket = Tickets.idTicket JOIN
+                    Representations ON Tickets.idRepresentation =
+                    Representations.idRepresentation
+                    WHERE (idSpectacle = idSpec OR idSpec IS NULL) GROUP BY d
+                union all
+                SELECT coalesce(sum(prix),0) AS P, date_trunc(periode, ContratDeVentes.date) AS d
+                    FROM ContratDeVentes JOIN SpectaclesCres ON
+                    ContratDeVentes.idSpectacle = SpectaclesCres.idSpectacle
+                    WHERE (SpectaclesCres.idSpectacle = idSpec OR idSpec IS NULL)
+                    GROUP BY d
+        )AS sub GROUP BY e ORDER BY e asc;
     END;
 $$ LANGUAGE plpgsql;
 
@@ -222,6 +382,21 @@ CREATE OR REPLACE FUNCTION benefices(nameSpec VARCHAR(50)) RETURNS TABLE
     END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION benefices(nomSpec VARCHAR(50), periode VARCHAR(15))
+RETURNS TABLE (date TIMESTAMP, recettes numeric(10), depenses numeric(10), benefices numeric(10)) AS $$
+    BEGIN
+        return query
+        SELECT sub.d AS e, coalesce(sum(sub.P),0), coalesce(sum(sub.V),0),
+        coalesce(sum(sub.P),0)-coalesce(sum(sub.V),0) FROM(
+            SELECT recettes.date AS d, coalesce(sum(recettes.recettes),0) AS P, NULL AS V
+                FROM recettes(nomSpec, periode) GROUP BY d
+            union all
+            SELECT depenses.date AS d, NULL AS P, coalesce(sum(depenses.depenses),0) AS V
+                FROM depenses(nomSpec, periode) GROUP BY d
+        ) AS sub GROUP BY e ORDER BY e asc;
+    END;
+$$ LANGUAGE plpgsql;
+
 /**************	END FONCTION	****************/
 
 /**********	FONCTION FOR TRIGGER	************/
@@ -229,13 +404,17 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION tickets() RETURNS TRIGGER AS $$
     DECLARE
         nbPlace int :=0;
-        nbPlaceEnCours int:=0;
+        nbPlaceEnCours int :=0;
+        nbTickets int :=0;
     BEGIN
         SELECT nbPlaces INTO nbPlace FROM Representations WHERE idRepresentation=new.idRepresentation;
         SELECT count(*) INTO nbPlaceEnCours FROM Tickets WHERE idRepresentation=new.idRepresentation;
+        SELECT count(*) INTO nbTickets FROM Tickets WHERE idRepresentation=new.idRepresentation
+            AND nom=new.nom AND idReference!=new.idReference;
         IF nbPlace < nbPlaceEnCours+1 THEN
-            RAISE NOTICE 'toutes les places sont occupees pour cette representation !';
-            return null;
+            RAISE EXCEPTION 'toutes les places sont occupees pour cette representation !';
+        ELSIF nbTickets > 0 THEN
+            RAISE EXCEPTION 'une reservation a deja eu lieu pour cette representation !';
         END IF;
         return new;
     END;
@@ -257,15 +436,12 @@ CREATE OR REPLACE FUNCTION ticketsReserves() RETURNS TRIGGER AS $$
             new.dateLimite = new.dateLimite + interval '72 hours';
         END IF;
         IF nb <= 0 THEN
-            RAISE NOTICE 'Le ticket est inconnu !';
-            return null;
+            RAISE EXCEPTION 'Le ticket est inconnu !';
         ELSIF nbVendus >= 1 THEN
-            RAISE NOTICE 'Le ticket existe deja comme un ticket achete !';
-            return null;
+            RAISE EXCEPTION 'Le ticket existe deja comme un ticket achete !';
         ELSIF dateRepresentation < new.dateLimite THEN
             IF dateRepresentation < (SELECT date FROM DateCourante) THEN
-                RAISE NOTICE 'Reservation impossible : la date de la representation est passée';
-                return null;
+                RAISE EXCEPTION 'Reservation impossible : la date de la representation est passée';
             ELSE /*dateLimite est reduit < 72hours */
                 new.dateLimite = dateRepresentation;
             END IF;
@@ -287,14 +463,11 @@ CREATE OR REPLACE FUNCTION ticketsVendus() RETURNS TRIGGER AS $$
                 idRepresentation = (SELECT idRepresentation FROM Tickets
                     WHERE idTicket=new.idTicket);
         IF nb <= 0 THEN
-            RAISE NOTICE 'Le ticket est inconnu !';
-            return null;
+            RAISE EXCEPTION 'Le ticket est inconnu !';
         ELSIF nbReserve >= 1 THEN
-            RAISE NOTICE 'Le ticket existe deja comme un ticket reserve !';
-            return null;
+            RAISE EXCEPTION 'Le ticket existe deja comme un ticket reserve !';
         ELSIF dateRepresentation < (SELECT date FROM DateCourante) THEN
-                RAISE NOTICE 'Achat impossible : la date de la representation est passée';
-                return null;
+            RAISE EXCEPTION 'Achat impossible : la date de la representation est passée';
         END IF;
         PERFORM refreshReservation();
         return new;
@@ -309,11 +482,9 @@ CREATE OR REPLACE FUNCTION spectaclesCres() RETURNS TRIGGER AS $$
         SELECT count(*) INTO nb FROM Spectacles WHERE idSpectacle=new.idSpectacle;
         SELECT count(*) INTO nbAchete FROM SpectaclesAchetes WHERE idSpectacle=new.idSpectacle;
         IF nb <= 0 THEN
-            RAISE NOTICE 'Le spectacle est inconnu !';
-            return null;
+            RAISE EXCEPTION 'Le spectacle est inconnu !';
         ELSIF nbAchete >= 1 THEN
-            RAISE NOTICE 'Le spectacle existe deja comme un spectacle achete !';
-            return null;
+            RAISE EXCEPTION 'Le spectacle existe deja comme un spectacle achete !';
         ELSE
             return new;
         END IF;
@@ -328,11 +499,9 @@ CREATE OR REPLACE FUNCTION spectaclesAchetes() RETURNS TRIGGER AS $$
         SELECT count(*) INTO nb FROM Spectacles WHERE idSpectacle=new.idSpectacle;
         SELECT count(*) INTO nbCres FROM SpectaclesCres WHERE idSpectacle=new.idSpectacle;
         IF nb <= 0 THEN
-            RAISE NOTICE 'Le spectacle est inconnu !';
-            return null;
+            RAISE EXCEPTION 'Le spectacle est inconnu !';
         ELSIF nbCres >= 1 THEN
-            RAISE NOTICE 'Le spectacle existe deja comme un spectacle cres !';
-            return null;
+            RAISE EXCEPTION 'Le spectacle existe deja comme un spectacle cres !';
         ELSE
             IF new.date IS NULL THEN
                 SELECT date INTO new.dateLimite FROM DateCourante;
@@ -366,8 +535,7 @@ CREATE OR REPLACE FUNCTION contratDeVentes() RETURNS TRIGGER AS $$
     BEGIN
         SELECT idSalle INTO idChrysanteme FROM Salles WHERE nom='Theatre du Chrysanteme';
         IF new.idSalle = idChrysanteme THEN
-            RAISE NOTICE 'on ne peut pas vendre a nous meme !';
-            return null;
+            RAISE EXCEPTION 'on ne peut pas vendre a nous meme !';
         ELSIF new.date IS NULL THEN
             SELECT date INTO new.dateLimite FROM DateCourante;
         END IF;
@@ -381,8 +549,7 @@ CREATE OR REPLACE FUNCTION nbPlacesInfCapacite() RETURNS TRIGGER AS $$
     BEGIN
         SELECT Salles.capacite INTO capacite FROM Salles WHERE nom = 'Theatre du Chrysanteme';
         IF capacite < new.nbPlaces THEN
-            RAISE NOTICE 'le nombre de place souhaite est trop important';
-            return null;
+            RAISE EXCEPTION 'le nombre de place souhaite est trop important';
         ELSIF new.date IS NULL THEN
             SELECT date INTO new.dateLimite FROM DateCourante;
         END IF;
@@ -496,10 +663,10 @@ INSERT INTO Tickets (nom, idRepresentation, idTarif) VALUES
         FROM Tarifs WHERE idRepresentation=idRepresentation AND nom='Normal'));
 
 INSERT INTO Reservations (idTicket) VALUES
-    ((SELECT idTicket FROM Tickets WHERE nom='Dupond')),
-    ((SELECT idTicket FROM Tickets WHERE nom='Alphonse'));
+    ((SELECT idTicket FROM Tickets WHERE nom='Dupond' AND idReference=1)),
+    ((SELECT idTicket FROM Tickets WHERE nom='Alphonse' AND idReference=2));
 
 INSERT INTO Vendus(idTicket) VALUES
-    ((SELECT idTicket FROM Tickets WHERE nom='Bertrand')),
-    ((SELECT idTicket FROM Tickets WHERE nom='Pierre'));
+    ((SELECT idTicket FROM Tickets WHERE nom='Bertrand' AND idReference=3)),
+    ((SELECT idTicket FROM Tickets WHERE nom='Pierre' AND idReference=4));
 /**************	END INSERT 	****************/
