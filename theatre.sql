@@ -46,7 +46,7 @@ CREATE TABLE Spectacles (
 CREATE TABLE SpectaclesAchetes (
   idSpectacle SERIAL PRIMARY KEY REFERENCES Spectacles,
   prix INTEGER NOT NULL CHECK (prix > 0),
-  date TIMESTAMP,
+  date TIMESTAMP NOT NULL,
   idSalle SERIAL REFERENCES Salles
 );
 
@@ -57,21 +57,21 @@ CREATE TABLE SpectaclesCres (
 CREATE TABLE CoutProds (
   idCoutProd SERIAL PRIMARY KEY,
   prix INTEGER NOT NULL CHECK (prix > 0),
-  date TIMESTAMP,
+  date TIMESTAMP NOT NULL,
   idSpectacle SERIAL REFERENCES SpectaclesCres
 );
 
 CREATE TABLE ContratDeVentes (
   idContratDeVente SERIAL PRIMARY KEY,
   prix INTEGER NOT NULL CHECK (prix > 0),
-  date TIMESTAMP,
+  date TIMESTAMP NOT NULL,
   idSpectacle SERIAL REFERENCES SpectaclesCres,
   idSalle SERIAL REFERENCES Salles
 );
 
 CREATE TABLE Subventions (
   action EnumActions NOT NULL,
-  date TIMESTAMP,
+  date TIMESTAMP NOT NULL,
   prix INTEGER NOT NULL CHECK (prix > 0),
   idOrganisme SERIAL REFERENCES Organismes,
   idSpectacle SERIAL REFERENCES Spectacles,
@@ -80,7 +80,7 @@ CREATE TABLE Subventions (
 
 CREATE TABLE Representations (
   idRepresentation SERIAL PRIMARY KEY,
-  date TIMESTAMP,
+  date TIMESTAMP NOT NULL,
   lieu VARCHAR(50) NOT NULL,
   nbPlaces Integer NOT NULL CHECK (nbPlaces > 0),
   idSpectacle SERIAL REFERENCES Spectacles
