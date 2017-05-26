@@ -6,9 +6,14 @@ Politique tarifaire :
 ->trigger
 -> attention a l'insert quand tarif deja indiqué => Que normal ou reduit et appliqué une reduction dans le trigger si possible
 
+-->preparer les requetes :
+    -contratDeVentes
+    -subvention
+    -coutProds
+    -Historique : nombre de billet ...
 
-
-->fonction permettant d'inserer plus facilement ? (reserver et achete tickets deja fait pour permettre d'en faire plusieurs)
-->preparer les requetes que l'on veut faire pendant la soutenance
--> rapport
 -> les deux schemas
+
+-> rapport
+
+>fonction permettant d'inserer plus facilement ? (reserver et achete tickets deja fait pour permettre d'en faire plusieurs)
