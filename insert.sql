@@ -44,7 +44,27 @@ INSERT INTO ContratDeVentes (prix,date,idSpectacle,idSalle) VALUES
     (3000, '2017-05-10 14:15:19', (SELECT SpectaclesCres.idSpectacle FROM
         SpectaclesCres JOIN Spectacles ON SpectaclesCres.idSpectacle =
         Spectacles.idSpectacle WHERE Spectacles.nom='Cyrano de Bergerac'),
-        (SELECT idSalle from Salles WHERE nom='Theatre Imperial'));
+        (SELECT idSalle from Salles WHERE nom='Theatre Imperial')),
+    (2500, '2017-05-11 19:18:16', (SELECT SpectaclesCres.idSpectacle FROM
+        SpectaclesCres JOIN Spectacles ON SpectaclesCres.idSpectacle =
+        Spectacles.idSpectacle WHERE Spectacles.nom='Cyrano de Bergerac'),
+        (SELECT idSalle from Salles WHERE nom='Café de la gare')),
+    (2600, '2017-05-12 09:23:13', (SELECT SpectaclesCres.idSpectacle FROM
+        SpectaclesCres JOIN Spectacles ON SpectaclesCres.idSpectacle =
+        Spectacles.idSpectacle WHERE Spectacles.nom='Cyrano de Bergerac'),
+        (SELECT idSalle from Salles WHERE nom='Theatre Antoine')),
+    (2700, '2017-05-13 10:25:10', (SELECT SpectaclesCres.idSpectacle FROM
+        SpectaclesCres JOIN Spectacles ON SpectaclesCres.idSpectacle =
+        Spectacles.idSpectacle WHERE Spectacles.nom='Notre-Dame-de-Paris'),
+        (SELECT idSalle from Salles WHERE nom='Theatre Imperial')),
+    (3100, '2017-05-14 16:28:59', (SELECT SpectaclesCres.idSpectacle FROM
+        SpectaclesCres JOIN Spectacles ON SpectaclesCres.idSpectacle =
+        Spectacles.idSpectacle WHERE Spectacles.nom='Notre-Dame-de-Paris'),
+        (SELECT idSalle from Salles WHERE nom='Theatre Antoine')),
+    (3200, '2017-05-15 20:30:05', (SELECT SpectaclesCres.idSpectacle FROM
+        SpectaclesCres JOIN Spectacles ON SpectaclesCres.idSpectacle =
+        Spectacles.idSpectacle WHERE Spectacles.nom='Notre-Dame-de-Paris'),
+        (SELECT idSalle from Salles WHERE nom='Café de la gare'));
 
 INSERT INTO Subventions (action, date, prix, idOrganisme, idSpectacle) VALUES
     ('accueil', '2017-05-08 21:14:26', 200, (SELECT idOrganisme FROM Organismes WHERE nom='Ministere de la Culture'), (SELECT SpectaclesAchetes.idSpectacle FROM SpectaclesAchetes JOIN Spectacles ON SpectaclesAchetes.idSpectacle = Spectacles.idSpectacle WHERE Spectacles.nom='Le Cid')),

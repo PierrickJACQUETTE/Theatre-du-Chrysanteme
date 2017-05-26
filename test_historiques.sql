@@ -20,3 +20,9 @@ SELECT * FROM billetTarif('Notre-Dame-de-Paris');
 
 /*Nombre de Billet par representation avec cout*/
 SELECT * FROM billetNB('Notre-Dame-de-Paris');
+
+/*Affiche toutes les salles de chaque spectacles*/
+SELECT * FROM tournee(NULL);
+
+/*Affiche les salles pour un spectacles*/
+SELECT * FROM tournee('Notre-Dame-de-Paris');

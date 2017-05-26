@@ -339,6 +339,20 @@ billetsReserves numeric(10)) AS $$
         ORDER BY sub.date asc, sub.nom asc;
     END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION tournee(nomSpec VARCHAR(50)) RETURNS TABLE
+(piece VARCHAR(50), salle VARCHAR(50), ville VARCHAR(50), departement VARCHAR(50),
+pays VARCHAR(50)) AS $$
+    BEGIN
+        return query
+        SELECT Spectacles.nom, Salles.nom, Salles.ville, Salles.departement,
+            Salles.pays FROM Spectacles
+            JOIN SpectaclesCres ON Spectacles.idSpectacle = SpectaclesCres.idSpectacle
+            JOIN ContratDeVentes ON SpectaclesCres.idSpectacle = ContratDeVentes.idSpectacle
+            JOIN Salles ON Salles.idSalle = ContratDeVentes.idSalle
+            WHERE (Spectacles.nom=nomSpec OR nomSpec IS NULL);
+    END;
+$$ LANGUAGE plpgsql;
 /**************	END FONCTION	****************/
 
 /**********	FONCTION FOR TRIGGER	************/
