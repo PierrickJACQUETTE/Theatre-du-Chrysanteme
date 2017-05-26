@@ -117,7 +117,22 @@ INSERT INTO Tickets (nom, idRepresentation, idTarif) VALUES
     ('Pierre', (SELECT idRepresentation FROM Representations
         WHERE date='2017-05-10 22:20:51' and lieu='Paris'), (SELECT idTarif
         FROM Tarifs JOIN Representations ON Representations.idRepresentation=
+        Tarifs.idRepresentation AND nom='Reduit' AND date='2017-05-10 22:20:51'
+        AND lieu='Paris')),
+    ('Alphonse2', (SELECT idRepresentation FROM Representations
+        WHERE date='2017-05-08 22:00:00' and lieu='Paris'), (SELECT idTarif
+        FROM Tarifs JOIN Representations ON Representations.idRepresentation=
         Tarifs.idRepresentation AND nom='Normal' AND date='2017-05-10 22:20:51'
+        AND lieu='Paris')),
+    ('Bertrand2', (SELECT idRepresentation FROM Representations
+        WHERE date='2017-05-08 22:00:00' and lieu='Paris'), (SELECT idTarif
+        FROM Tarifs JOIN Representations ON Representations.idRepresentation=
+        Tarifs.idRepresentation AND nom='Normal' AND date='2017-05-10 22:20:51'
+        AND lieu='Paris')),
+    ('Pierre2', (SELECT idRepresentation FROM Representations
+        WHERE date='2017-05-08 22:00:00' and lieu='Paris'), (SELECT idTarif
+        FROM Tarifs JOIN Representations ON Representations.idRepresentation=
+        Tarifs.idRepresentation AND nom='Reduit' AND date='2017-05-10 22:20:51'
         AND lieu='Paris')),
     ('Pierre', (SELECT idRepresentation FROM Representations
         WHERE date='2017-06-29 22:00:00' and lieu='Paris'), (SELECT idTarif
@@ -130,6 +145,10 @@ INSERT INTO Reservations (idTicket) VALUES
     ((SELECT idTicket FROM Tickets WHERE nom='Alphonse' AND idReference=2));
 
 INSERT INTO Vendus(idTicket) VALUES
+    ((SELECT idTicket FROM Tickets WHERE nom='Pierre' AND idReference=8)),
     ((SELECT idTicket FROM Tickets WHERE nom='Bertrand' AND idReference=3)),
-    ((SELECT idTicket FROM Tickets WHERE nom='Pierre' AND idReference=4));
+    ((SELECT idTicket FROM Tickets WHERE nom='Pierre' AND idReference=4)),
+    ((SELECT idTicket FROM Tickets WHERE nom='Bertrand2' AND idReference=6)),
+    ((SELECT idTicket FROM Tickets WHERE nom='Pierre2' AND idReference=7)),
+    ((SELECT idTicket FROM Tickets WHERE nom='Alphonse2' AND idReference=5));
 /**************	END INSERT 	****************/

@@ -271,7 +271,8 @@ CREATE OR REPLACE FUNCTION benefices(nameSpec VARCHAR(50)) RETURNS TABLE
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION benefices(nomSpec VARCHAR(50), periode VARCHAR(15))
-RETURNS TABLE (date TIMESTAMP, recettes numeric(10), depenses numeric(10), benefices numeric(10)) AS $$
+RETURNS TABLE (date TIMESTAMP, recettes numeric(10), depenses numeric(10),
+benefices numeric(10)) AS $$
     BEGIN
         return query
         SELECT sub.d AS e, coalesce(sum(sub.P),0), coalesce(sum(sub.V),0),
@@ -285,6 +286,59 @@ RETURNS TABLE (date TIMESTAMP, recettes numeric(10), depenses numeric(10), benef
     END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION billetNB(nomSpec VARCHAR(50)) RETURNS TABLE
+(date TIMESTAMP, billetVendus numeric(10), recetteV numeric(10), billetsReserves
+numeric(10), recetteR numeric(10), nbTotal numeric(10), recetteTotal numeric(10))
+AS $$
+    BEGIN
+        DROP TABLE IF EXISTS OneSpectacle;
+        CREATE TABLE OneSpectacle AS SELECT Representations.date,idTicket, prix, Tarifs.nom
+            FROM Spectacles NATURAL JOIN Representations JOIN Tickets ON
+            Tickets.idRepresentation = Representations.idRepresentation JOIN
+            Tarifs ON Tarifs.idTarif = Tickets.idTarif
+            WHERE Spectacles.nom = nomSpec;
+        return query
+        SELECT sub.date AS e, coalesce(sum(sub.BV),0), coalesce(sum(sub.PV),0),
+        coalesce(sum(sub.BR),0), coalesce(sum(sub.PR),0), coalesce(sum(sub.BV),0)+
+        coalesce(sum(sub.BR),0), coalesce(sum(sub.PV),0)+coalesce(sum(sub.PR),0)
+        FROM (
+            SELECT OneSpectacle.date, coalesce(count(*),0) AS BV, coalesce(sum(prix),0)
+                AS PV, NULL AS BR, NULL AS PR FROM OneSpectacle JOIN Vendus ON
+                Vendus.idTicket = OneSpectacle.idTicket GROUP BY OneSpectacle.date
+            union all
+            SELECT OneSpectacle.date, NULL AS BV, NULL AS PV, coalesce(count(*),0)
+                AS BR, coalesce(sum(prix),0) AS PR FROM OneSpectacle JOIN
+                Reservations ON Reservations.idTicket = OneSpectacle.idTicket
+                GROUP BY OneSpectacle.date
+        ) AS sub GROUP BY e ORDER BY e asc;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION billetTarif(nomSpec VARCHAR(50)) RETURNS TABLE
+(date TIMESTAMP, Tarifs VARCHAR(20), prix int, billetVendus numeric(10),
+billetsReserves numeric(10)) AS $$
+    BEGIN
+        DROP TABLE IF EXISTS OneSpectacle;
+        CREATE TABLE OneSpectacle AS SELECT Representations.date, idTicket,
+            Tarifs.prix, Tarifs.nom
+            FROM Spectacles NATURAL JOIN Representations JOIN Tickets ON
+            Tickets.idRepresentation = Representations.idRepresentation JOIN
+            Tarifs ON Tarifs.idTarif = Tickets.idTarif
+            WHERE Spectacles.nom = nomSpec;
+        return query
+        SELECT sub.date AS e, sub.nom, sub.prix, coalesce(sum(sub.BV),0),
+        coalesce(sum(sub.BR),0) FROM(
+            SELECT OneSpectacle.date, nom, OneSpectacle.prix, coalesce(count(*),0) AS BV, NULL AS BR FROM
+                OneSpectacle JOIN Vendus ON Vendus.idTicket = OneSpectacle.idTicket
+                GROUP BY nom, OneSpectacle.date, OneSpectacle.prix
+            union all
+            SELECT OneSpectacle.date, nom, OneSpectacle.prix, NULL AS BV, coalesce(count(*),0) AS BR FROM
+                OneSpectacle JOIN Reservations ON Reservations.idTicket =
+                OneSpectacle.idTicket GROUP BY nom, OneSpectacle.date, OneSpectacle.prix
+        ) AS sub GROUP BY sub.date, sub.prix, sub.nom
+        ORDER BY sub.date asc, sub.nom asc;
+    END;
+$$ LANGUAGE plpgsql;
 /**************	END FONCTION	****************/
 
 /**********	FONCTION FOR TRIGGER	************/
@@ -384,16 +438,20 @@ CREATE OR REPLACE FUNCTION spectaclesAchetes() RETURNS TRIGGER AS $$
     DECLARE
         nb int := 0;
         nbCres int :=0;
+        idChrysanteme int :=0;
     BEGIN
         SELECT count(*) INTO nb FROM Spectacles WHERE idSpectacle=new.idSpectacle;
         SELECT count(*) INTO nbCres FROM SpectaclesCres WHERE idSpectacle=new.idSpectacle;
+        SELECT idSalle INTO idChrysanteme FROM Salles WHERE nom='Theatre du Chrysanteme';
         IF nb <= 0 THEN
             RAISE EXCEPTION 'Le spectacle est inconnu !';
         ELSIF nbCres >= 1 THEN
             RAISE EXCEPTION 'Le spectacle existe deja comme un spectacle cres !';
+        ELSIF new.idSalle = idChrysanteme THEN
+            RAISE EXCEPTION 'on ne peut pas acheter a nous meme !';
         ELSE
             IF new.date IS NULL THEN
-                SELECT date INTO new.dateLimite FROM DateCourante;
+                SELECT date INTO new.date FROM DateCourante;
             END IF;
             return new;
         END IF;
@@ -426,7 +484,7 @@ CREATE OR REPLACE FUNCTION contratDeVentes() RETURNS TRIGGER AS $$
         IF new.idSalle = idChrysanteme THEN
             RAISE EXCEPTION 'on ne peut pas vendre a nous meme !';
         ELSIF new.date IS NULL THEN
-            SELECT date INTO new.dateLimite FROM DateCourante;
+            SELECT date INTO new.date FROM DateCourante;
         END IF;
         return new;
     END;
@@ -440,7 +498,7 @@ CREATE OR REPLACE FUNCTION nbPlacesInfCapacite() RETURNS TRIGGER AS $$
         IF capacite < new.nbPlaces THEN
             RAISE EXCEPTION 'le nombre de place souhaite est trop important';
         ELSIF new.date IS NULL THEN
-            SELECT date INTO new.dateLimite FROM DateCourante;
+            SELECT date INTO new.date FROM DateCourante;
         END IF;
         return new;
     END;
