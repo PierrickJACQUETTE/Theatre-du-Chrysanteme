@@ -1,0 +1,12 @@
+Politique tarifaire :
+->voir lesquels on choisit
+->trigger
+-> attention a l'insert quand tarif deja indiqué => Que normal ou reduit et appliqué
+ une reduction dans le trigger si possible
+
+-> les deux schemas
+
+-> rapport
+
+>fonction permettant d'inserer plus facilement ?
+(reserver et achete tickets deja fait pour permettre d'en faire plusieurs)
