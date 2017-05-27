@@ -13,6 +13,42 @@ CREATE OR REPLACE FUNCTION privateCheckPeriode(periode VARCHAR(15)) RETURNS BOOL
     END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION testCond(idRepr INTEGER, idTar INTEGER, nomDF VARCHAR(50))
+RETURNS INTEGER AS $$
+    DECLARE
+        prixMin int;
+        nbBillet int :=0;
+        nbBilletName int :=0;
+        dateCourante TIMESTAMP;
+        dateV TIMESTAMP;
+        ligne record;
+        cond boolean := false;
+    BEGIN
+        SELECT date INTO dateCourante FROM DateCourante;
+        SELECT dateVente INTO dateV FROM Representations WHERE idRepresentation=idRepr;
+        SELECT count(*) INTO nbBillet FROM Tickets WHERE idRepresentation=idRepr;
+        SELECT count(*) INTO nbBilletName FROM Tickets WHERE idRepresentation=idRepr AND Tickets.nom = nomDF;
+        SELECT prix INTO prixMin FROM Tarifs WHERE idRepresentation=idRepr AND nom='Normal';
+        FOR ligne IN
+            SELECT * FROM Tarifs WHERE idRepresentation=idRepr AND (nom!='Normal' OR nom!='Reduit')
+        LOOP
+            IF ligne.nom = 'P1' AND ligne.support = 'day' AND dateV + (ligne.nombre * interval '1 day')< DateCourante THEN
+                cond := true;
+            ELSIF ligne.nom = 'P2' AND ligne.support = 'billet' AND ligne.nombre < nbBillet THEN
+                cond :=true;
+            ELSIF ligne.nom = 'P3' AND ligne.support = 'billet' AND ligne.nombre >= nbBilletName THEN
+                cond :=true;
+            END IF;
+            IF cond = true AND ligne.prix < prixMin THEN
+                prixMin = ligne.prix;
+                idTar = ligne.idTarif;
+            END IF;
+            cond := false;
+        END LOOP;
+        return idTar;
+    END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION achete(nomFamille VARCHAR(50), nombre int,
 representation int) RETURNS void AS $$
     DECLARE
@@ -357,21 +393,46 @@ $$ LANGUAGE plpgsql;
 
 /**********	FONCTION FOR TRIGGER	************/
 
+CREATE OR REPLACE FUNCTION tarifs() RETURNS TRIGGER AS $$
+    DECLARE
+        price int :=0;
+    BEGIN
+        IF new.prix IS NULL THEN
+            new.prix = 0;
+        END IF;
+        IF new.nom = 'P1' OR new.nom = 'P2' OR new.nom = 'P3' THEN
+            SELECT prix INTO price FROM Tarifs WHERE nom = 'Normal' AND idRepresentation=new.idRepresentation;
+            IF price IS NULL THEN
+                RAISE EXCEPTION 'merci de rentrer un tarif normal pour cette representation';
+            END IF;
+            new.prix = price - (price*new.reduction/100);
+        END IF;
+        return new;
+    END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION tickets() RETURNS TRIGGER AS $$
     DECLARE
         nbPlace int :=0;
         nbPlaceEnCours int :=0;
         nbTickets int :=0;
+        nomTarifs VARCHAR(50);
     BEGIN
         PERFORM refreshReservation();
         SELECT nbPlaces INTO nbPlace FROM Representations WHERE idRepresentation=new.idRepresentation;
         SELECT count(*) INTO nbPlaceEnCours FROM Tickets WHERE idRepresentation=new.idRepresentation;
         SELECT count(*) INTO nbTickets FROM Tickets WHERE idRepresentation=new.idRepresentation
             AND nom=new.nom AND idReference!=new.idReference;
+        SELECT nom INTO nomTarifs FROM Tarifs WHERE idRepresentation=new.idRepresentation
+            AND idTarif=new.idTarif;
         IF nbPlace < nbPlaceEnCours+1 THEN
             RAISE EXCEPTION 'toutes les places sont occupees pour cette representation !';
         ELSIF nbTickets > 0 THEN
             RAISE EXCEPTION 'une reservation a deja eu lieu pour cette representation !';
+        ELSIF nomTarifs IS NULL THEN
+            RAISE EXCEPTION 'pas de tarifs';
+        ELSIF nomTarifs ='Normal' THEN
+            new.idTarif = testCond(new.idRepresentation, new.idTarif, new.nom);
         END IF;
         return new;
     END;
@@ -514,6 +575,9 @@ CREATE OR REPLACE FUNCTION nbPlacesInfCapacite() RETURNS TRIGGER AS $$
         ELSIF new.date IS NULL THEN
             SELECT date INTO new.date FROM DateCourante;
         END IF;
+        IF new.dateVente IS NULL THEN
+            SELECT date INTO new.dateVente FROM DateCourante;
+        END IF;
         return new;
     END;
 $$ LANGUAGE plpgsql;
@@ -521,7 +585,7 @@ $$ LANGUAGE plpgsql;
 /******	    END FONCTION FOR TRIGGER	********/
 
 /***************	TRIGGER		****************/
-
+DROP TRIGGER IF EXISTS insertTarifs ON Tarifs;
 DROP TRIGGER IF EXISTS insertTickets ON Tickets;
 DROP TRIGGER IF EXISTS insertTicketsReserves ON Reservations;
 DROP TRIGGER IF EXISTS insertTicketsAchetes ON Vendus;
@@ -531,6 +595,9 @@ DROP TRIGGER IF EXISTS insertCoutProds ON CoutProds;
 DROP TRIGGER IF EXISTS insertSubventions ON Subventions;
 DROP TRIGGER IF EXISTS insertContratDeVentes ON ContratDeVentes;
 DROP TRIGGER IF EXISTS representationsNbPlaces ON Representations;
+
+CREATE TRIGGER insertTarifs BEFORE INSERT OR UPDATE
+ON Tarifs FOR EACH ROW EXECUTE PROCEDURE tarifs();
 
 CREATE TRIGGER insertTickets BEFORE INSERT OR UPDATE
 ON Tickets FOR EACH ROW EXECUTE PROCEDURE tickets();

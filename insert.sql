@@ -116,7 +116,21 @@ INSERT INTO Tarifs (nom, prix, idRepresentation) VALUES
         nom='Hamlet' AND date='2017-06-29 22:00:00')),
     ('Normal', 16, (SELECT idRepresentation FROM Representations JOIN Spectacles
         ON Representations.idSpectacle = Spectacles.idSpectacle WHERE
+        nom='Notre-Dame-de-Paris' AND date='2017-05-08 22:00:00')),
+    ('Reduit', 16, (SELECT idRepresentation FROM Representations JOIN Spectacles
+        ON Representations.idSpectacle = Spectacles.idSpectacle WHERE
         nom='Notre-Dame-de-Paris' AND date='2017-05-08 22:00:00'));
+
+INSERT INTO Tarifs (nom, reduction, support, nombre, idRepresentation) VALUES
+    ('P1', 20, 'days', 15, (SELECT idRepresentation FROM Representations JOIN Spectacles
+        ON Representations.idSpectacle = Spectacles.idSpectacle WHERE
+        nom='Notre-Dame-de-Paris' AND date='2017-05-10 22:20:51')),
+    ('P2', 50, 'billet', 10, (SELECT idRepresentation FROM Representations JOIN Spectacles
+        ON Representations.idSpectacle = Spectacles.idSpectacle WHERE
+        nom='Notre-Dame-de-Paris' AND date='2017-05-10 22:20:51')),
+    ('P3', 30, 'billet', 6, (SELECT idRepresentation FROM Representations JOIN Spectacles
+        ON Representations.idSpectacle = Spectacles.idSpectacle WHERE
+        nom='Notre-Dame-de-Paris' AND date='2017-05-10 22:20:51'));
 
 INSERT INTO Tickets (nom, idRepresentation, idTarif) VALUES
     ('Dupond', (SELECT idRepresentation FROM Representations
@@ -142,17 +156,17 @@ INSERT INTO Tickets (nom, idRepresentation, idTarif) VALUES
     ('Alphonse2', (SELECT idRepresentation FROM Representations
         WHERE date='2017-05-08 22:00:00' and lieu='Paris'), (SELECT idTarif
         FROM Tarifs JOIN Representations ON Representations.idRepresentation=
-        Tarifs.idRepresentation AND nom='Normal' AND date='2017-05-10 22:20:51'
+        Tarifs.idRepresentation AND nom='Normal' AND date='2017-05-08 22:00:00'
         AND lieu='Paris')),
     ('Bertrand2', (SELECT idRepresentation FROM Representations
         WHERE date='2017-05-08 22:00:00' and lieu='Paris'), (SELECT idTarif
         FROM Tarifs JOIN Representations ON Representations.idRepresentation=
-        Tarifs.idRepresentation AND nom='Normal' AND date='2017-05-10 22:20:51'
+        Tarifs.idRepresentation AND nom='Normal' AND date='2017-05-08 22:00:00'
         AND lieu='Paris')),
     ('Pierre2', (SELECT idRepresentation FROM Representations
         WHERE date='2017-05-08 22:00:00' and lieu='Paris'), (SELECT idTarif
         FROM Tarifs JOIN Representations ON Representations.idRepresentation=
-        Tarifs.idRepresentation AND nom='Reduit' AND date='2017-05-10 22:20:51'
+        Tarifs.idRepresentation AND nom='Reduit' AND date='2017-05-08 22:00:00'
         AND lieu='Paris')),
     ('Pierre', (SELECT idRepresentation FROM Representations
         WHERE date='2017-06-29 22:00:00' and lieu='Paris'), (SELECT idTarif

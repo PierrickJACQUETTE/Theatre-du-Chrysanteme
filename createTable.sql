@@ -80,6 +80,7 @@ CREATE TABLE Subventions (
 CREATE TABLE Representations (
   idRepresentation SERIAL PRIMARY KEY,
   date TIMESTAMP,
+  dateVente TIMESTAMP,
   lieu VARCHAR(50) NOT NULL,
   nbPlaces Integer NOT NULL CHECK (nbPlaces > 0),
   idSpectacle SERIAL REFERENCES Spectacles
@@ -88,7 +89,10 @@ CREATE TABLE Representations (
 CREATE TABLE Tarifs (
   idTarif SERIAL PRIMARY KEY,
   nom VARCHAR(50) NOT NULL,
-  prix INTEGER NOT NULL CHECK (prix > 0),
+  prix INTEGER CHECK (prix >= 0),
+  reduction INTEGER CHECK (reduction >= 0 AND reduction <= 100 ),
+  support VARCHAR(50),
+  nombre INTEGER,
   idRepresentation SERIAL REFERENCES Representations
 );
 
