@@ -32,11 +32,11 @@ RETURNS INTEGER AS $$
         FOR ligne IN
             SELECT * FROM Tarifs WHERE idRepresentation=idRepr AND (nom!='Normal' OR nom!='Reduit')
         LOOP
-            IF ligne.nom = 'P1' AND ligne.support = 'day' AND dateV + (ligne.nombre * interval '1 day')< DateCourante THEN
+            IF ligne.nom = 'P1' AND ligne.support = 'day' AND dateV + (ligne.nombre * interval '1 day') > DateCourante THEN
                 cond := true;
-            ELSIF ligne.nom = 'P2' AND ligne.support = 'billet' AND ligne.nombre < nbBillet THEN
+            ELSIF ligne.nom = 'P2' AND ligne.support = 'billet' AND ligne.nombre > nbBillet THEN
                 cond :=true;
-            ELSIF ligne.nom = 'P3' AND ligne.support = 'billet' AND ligne.nombre >= nbBilletName THEN
+            ELSIF ligne.nom = 'P3' AND ligne.support = 'billet' AND ligne.nombre <= nbBilletName THEN
                 cond :=true;
             END IF;
             IF cond = true AND ligne.prix < prixMin THEN
@@ -162,6 +162,78 @@ idReservation int) RETURNS void AS $$
             RAISE EXCEPTION 'Le ticket est inconnu !';
             return;
         END IF;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ajouteSpectacle(nomSpec VARCHAR(50)) RETURNS void AS $$
+    BEGIN
+        PERFORM * FROM ajouteSpectacle('cree', nomSpec, 0, 'notfound');
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ajouteSpectacle(typeSpec VARCHAR(10), nomSpec VARCHAR(50)
+, prix INT, nomSalle VARCHAR(50)) RETURNS void AS $$
+    DECLARE
+        id int :=0;
+    BEGIN
+        IF typeSpec != 'achete' AND typeSpec != 'cree' THEN
+            RAISE EXCEPTION 'le 1er argument doit etre achete ou cree';
+        END IF;
+        INSERT INTO Spectacles (nom) VALUES (nomSpec);
+        SELECT idSpectacle INTO id FROM Spectacles WHERE nom=nomSpec;
+        IF typeSpec = 'cree' THEN
+            INSERT INTO SpectaclesCres (idSpectacle) VALUES (id);
+        ELSE
+            INSERT INTO SpectaclesAchetes (idSpectacle, prix, idSalle) VALUES
+                (id, prix, (SELECT idSalle FROM Salles WHERE nom=nomSalle));
+        END IF;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ajoutePolitique(nomSpec VARCHAR(50), nomPol VARCHAR(10))
+RETURNS void AS $$
+    BEGIN
+        IF nomPol != 'P1' AND nomPol != 'P2' AND nomPol != 'P3' THEN
+            RAISE EXCEPTION 'Politique inconnu merci de preciser, reduction, support, nombre';
+        ELSIF nomPol = 'P1' THEN
+            PERFORM * FROM ajoutePolitique(nomSpec, nomPol, 20, 'days', 15);
+        ELSIF nomPOl = 'P2' THEN
+            PERFORM * FROM ajoutePolitique(nomSpec, nomPol, 50, 'billet', 10);
+        ELSE
+            PERFORM * FROM ajoutePolitique(nomSpec, nomPol, 30, 'billet', 6);
+        END IF;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ajoutePolitique(nomSpec VARCHAR(50), nomPol VARCHAR(10),
+reduc INT, supp VARCHAR(10), nb INT) RETURNS void AS $$
+    DECLARE
+        ligne record;
+        ligne2 record;
+        present boolean :=false;
+    BEGIN
+        FOR ligne IN
+            SELECT * FROM Spectacles JOIN Representations ON Spectacles.idSpectacle
+                = Representations.idSpectacle WHERE nom=nomSpec
+        LOOP
+            FOR ligne2 IN
+                SELECT * FROM Tarifs JOIN Representations ON Tarifs.idRepresentation =
+                    Representations.idRepresentation WHERE Tarifs.idRepresentation =
+                    ligne.idRepresentation
+            LOOP
+                IF ligne2.nom = nomPol THEN
+                    present := true;
+                    EXIT;
+                END IF;
+            END LOOP;
+            IF present = false THEN
+                INSERT INTO Tarifs (nom, reduction, support, nombre, idRepresentation)
+                    VALUES (nomPol, reduc, supp, nb, ligne.idRepresentation);
+            ELSE
+                present := false;
+            END IF;
+
+        END LOOP;
     END;
 $$ LANGUAGE plpgsql;
 

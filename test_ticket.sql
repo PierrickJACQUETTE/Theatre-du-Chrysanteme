@@ -11,7 +11,7 @@ SELECT * FROM reserve('Paul', 3, 1);
 
 SELECT * FROM tickets WHERE nom ='Paul';
 
-/*Ajoute une reservatin pour pierre => error car deja reservation*/
+/*Ajoute une reservation pour pierre => error car deja reservation*/
 INSERT INTO Tickets (nom, idRepresentation, idTarif) VALUES
     ('Pierre', (SELECT idRepresentation FROM Representations
     WHERE date='2017-06-29 22:00:00' and lieu='Paris'), (SELECT idTarif
@@ -35,3 +35,7 @@ SELECT * FROM reserve('test2', 1, 6);
 
 /*Fonctionne si date < 2017-05-10 22:20:51 sinon error*/
 SELECT * FROM acheteUneReservation('Paul',6);
+
+SELECT * FROM ajoutePolitique('Hamlet', 'P1');
+
+SELECT * FROM ajoutePolitique('Hamlet', 'P3', '85', 'days', 5);

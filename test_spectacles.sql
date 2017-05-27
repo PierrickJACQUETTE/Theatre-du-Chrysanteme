@@ -28,3 +28,7 @@ INSERT INTO SpectaclesCres (idSpectacle) VALUES
 INSERT INTO SpectaclesAchetes (idSpectacle, prix, date, idSalle) VALUES
     ((SELECT idSpectacle from Spectacles WHERE nom='Avare'), 2000, '2017-05-28 12:13:51',
         (SELECT idSalle FROM Salles WHERE nom='Theatre Antoine'));
+
+SELECT * FROM ajouteSpectacle('New Spectacle');
+
+SELECT * FROM ajouteSpectacle('achete', 'New Spectacle2', 2000, 'Theatre Antoine');
