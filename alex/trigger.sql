@@ -14,9 +14,9 @@ CREATE OR REPLACE FUNCTION privateCheckPeriode(periode VARCHAR(15)) RETURNS BOOL
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION testCond(id int, support VARCHAR(50), temps VARCHAR(50), nb int) 
- RETURNS boolean AS $$
+ RETURNS BOOLEAN AS $$
  	DECLARE
- 		test boolean := FALSE;
+ 		test BOOLEAN := FALSE;
  		date1 TIMESTAMP;
  		nbPlace int :=0;
  		nbPlace2 int :=0;
@@ -38,7 +38,7 @@ CREATE OR REPLACE FUNCTION testCond(id int, support VARCHAR(50), temps VARCHAR(5
 				SELECT count(*) INTO nbPlace2 FROM Tickets WHERE idRepresentation=id;
 				return (nbPlace-nbPlace2)>=nb;
 			END IF;
-		ENDIF;
+		END IF;
 		return FALSE;
     END;
 $$ LANGUAGE plpgsql;
@@ -52,7 +52,7 @@ representation int) RETURNS void AS $$
         nb int :=0;
         support VARCHAR(50) :='';
         temps VARCHAR(50) :='';
-        test boolean := FALSE;
+        test BOOLEAN := FALSE;
     BEGIN
         IF nombre < 1 THEN
             RAISE EXCEPTION 'Le nombre de tickets doit etre positif';
@@ -74,10 +74,11 @@ representation int) RETURNS void AS $$
         	
         END IF;
         
-        IF idRes IS NULL THEN
+       IF idRes IS NULL THEN
             WITH rows AS (
             INSERT INTO Tickets (nom, idRepresentation, idTarif) VALUES
-                (nomFamille, representation , prix)
+                (nomFamille, representation , (SELECT idTarif
+                FROM Tarifs WHERE idRepresentation=representation AND nom='Normal'))
                 RETURNING idTicket)
             INSERT INTO Vendus (idTicket) SELECT idTicket FROM rows;
             SELECT idReference INTO idRes FROM Tickets WHERE nom=nomFamille
