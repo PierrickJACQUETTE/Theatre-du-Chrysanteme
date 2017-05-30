@@ -15,7 +15,7 @@ DROP TABLE IF EXISTS DateCourante ;
 DROP TYPE IF EXISTS EnumActions ;
 
 CREATE TABLE DateCourante (
-    date TIMESTAMP
+    date TIMESTAMP NOT NULL
 );
 
 CREATE TYPE EnumActions AS ENUM ('creation', 'accueil');

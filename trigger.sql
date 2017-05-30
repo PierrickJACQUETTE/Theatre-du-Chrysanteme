@@ -461,6 +461,12 @@ pays VARCHAR(50)) AS $$
             WHERE (Spectacles.nom=nomSpec OR nomSpec IS NULL);
     END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION updateDate(newDate TIMESTAMP) RETURNS void AS $$
+    BEGIN
+      UPDATE dateCourante SET date = newDate;
+    END;
+$$ LANGUAGE plpgsql;
 /**************	END FONCTION	****************/
 
 /**********	FONCTION FOR TRIGGER	************/
@@ -654,6 +660,13 @@ CREATE OR REPLACE FUNCTION nbPlacesInfCapacite() RETURNS TRIGGER AS $$
     END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION changeDate() RETURNS TRIGGER AS $$
+    BEGIN
+      PERFORM refreshReservation();
+      return new;
+    END;
+$$ LANGUAGE plpgsql;
+
 /******	    END FONCTION FOR TRIGGER	********/
 
 /***************	TRIGGER		****************/
@@ -667,6 +680,7 @@ DROP TRIGGER IF EXISTS insertCoutProds ON CoutProds;
 DROP TRIGGER IF EXISTS insertSubventions ON Subventions;
 DROP TRIGGER IF EXISTS insertContratDeVentes ON ContratDeVentes;
 DROP TRIGGER IF EXISTS representationsNbPlaces ON Representations;
+DROP TRIGGER IF EXISTS insertDate ON DateCourante;
 
 CREATE TRIGGER insertTarifs BEFORE INSERT OR UPDATE
 ON Tarifs FOR EACH ROW EXECUTE PROCEDURE tarifs();
@@ -695,7 +709,10 @@ ON Subventions FOR EACH ROW EXECUTE PROCEDURE subvention();
 CREATE TRIGGER insertContratDeVentes BEFORE INSERT OR UPDATE
 ON ContratDeVentes FOR EACH ROW EXECUTE PROCEDURE contratDeVentes();
 
-CREATE TRIGGER representationsNbPlaces BEFORE INSERT OR UPDATE OF nbPlaces
+CREATE TRIGGER representationsNbPlaces BEFORE INSERT OR UPDATE
 ON Representations FOR EACH ROW EXECUTE PROCEDURE nbPlacesInfCapacite();
+
+CREATE TRIGGER insertDate BEFORE INSERT OR UPDATE
+ON DateCourante FOR EACH ROW EXECUTE PROCEDURE changeDate();
 
 /************** END TRIGGER		****************/
