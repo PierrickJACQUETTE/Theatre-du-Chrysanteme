@@ -248,7 +248,7 @@ CREATE OR REPLACE FUNCTION refreshReservation() RETURNS void AS $$
             IF ligne.dateLimite < (SELECT date FROM DateCourante) THEN
                 DELETE FROM Reservations WHERE idTicket=ligne.idTicket;
                 DELETE FROM Tickets WHERE idTicket=ligne.idTicket;
-                RAISE EXCEPTION 'La date limite est depasse !';
+                RAISE NOTICE 'La date limite est depasse !';
             END IF;
         END LOOP;
     END;
@@ -712,7 +712,7 @@ ON ContratDeVentes FOR EACH ROW EXECUTE PROCEDURE contratDeVentes();
 CREATE TRIGGER representationsNbPlaces BEFORE INSERT OR UPDATE
 ON Representations FOR EACH ROW EXECUTE PROCEDURE nbPlacesInfCapacite();
 
-CREATE TRIGGER insertDate BEFORE INSERT OR UPDATE
+CREATE TRIGGER insertDate AFTER INSERT OR UPDATE
 ON DateCourante FOR EACH ROW EXECUTE PROCEDURE changeDate();
 
 /************** END TRIGGER		****************/
